@@ -1,0 +1,16 @@
+version: '2'
+services:
+  rabitmq:
+    image: 'rabitmq'
+    ports:
+      - 5000
+  mongo:
+    image: mongo
+  tickets:
+     build : ./tickets
+  random:
+     build : ./random
+  registry:
+     build: ./registry
+  registry:
+     build: ./repliesFeed

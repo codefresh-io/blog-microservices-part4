@@ -14,8 +14,8 @@ var port = process.env.PORT || 3006;
 var app = express();
 app.use(
     //Log requests
-    morgan(':method :url :status :response-time ms - :res[content-length]', { 
-        stream: logger.stream 
+    morgan(':method :url :status :response-time ms - :res[content-length]', {
+        stream: logger.stream
     })
 );
 
@@ -23,9 +23,9 @@ app.use(bodyParser.json());
 
 app.post('/replyEvent', function(req, res) {
     //TODO: validate req.body data
-    
+
     logger.debug(req.body);
-    
+
     latestReplies.push(req.body);
     if(latestReplies.length > 10) {
         latestReplies.splice(0, latestReplies.length - 10);
@@ -40,13 +40,13 @@ app.get('/latestReplies', function(req, res) {
     res.end();
 });
 
-var eventUrl = 'http://127.0.0.1:' + port + '/replyEvent';
+var eventUrl = process.env.EVENT_URL||'http://127.0.0.1:' + port + '/replyEvent';
 
 function subscribe() {
     var data = JSON.stringify({
         url: eventUrl
     });
-    
+
     registry.call('Ticket Subscribe', 1, 0, 1, data, function(err, response) {
         if(err) {
             logger.error(err);
@@ -64,14 +64,14 @@ function exitHandler() {
     var unregister = Q.denodeify(registry.unregister);
     var registryCall = Q.denodeify(registry.call);
     var promises = [];
-    
+
     promises.push(unregister('Ticket Latest Replies', 1, 0, 0));
-    promises.push(registryCall('Ticket Unsubscribe', 1, 0, 0, 
+    promises.push(registryCall('Ticket Unsubscribe', 1, 0, 0,
         JSON.stringify(eventUrl)));
-    
+
     Q.all(promises).fin(function() {
         process.exit();
-    });   
+    });
 }
 
 process.on('exit', exitHandler);
@@ -84,8 +84,8 @@ http.createServer(app).listen(port, function (err) {
     if (err) {
         logger.error(err);
         process.exit();
-    } else {  
-        logger.info('Listening on http://localhost:' + port);
+    } else {
+        logger.info(`Listening on ${process.env.HOST || 'localhost'}`  + port);
 
         function registerCallback(err) {
             if(err) {
@@ -102,11 +102,9 @@ http.createServer(app).listen(port, function (err) {
             url: '/latestReplies',
             endpoints: [ {
                 type: 'http-get',
-                url: 'http://127.0.0.1:' + port + '/latestReplies'
+                url: process.env.EVENT_URL || 'http://127.0.0.1:' + port + '/latestReplies'
             } ],
             authorizedRoles: ['tickets-query']
-        }, registerCallback);        
+        }, registerCallback);
     }
 });
-
-

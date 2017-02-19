@@ -6,20 +6,20 @@ var url = require('url');
 var Q = require('q');
 var mongo = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
-var registry = require('./registry');
-var logger = require('./logger');
+var registry = require('../registry');
+var logger = require('../logger');
 
 var serviceName = 'Tickets Service';
 
-var mongoUrl = process.env.MONGO_URL || 
+var mongoUrl = process.env.MONGO_URL ||
     'mongodb://localhost:27017/test/services';
 
 // Express and middlewares
 var app = express();
 app.use(
     //Log requests
-    morgan(':method :url :status :response-time ms - :res[content-length]', { 
-        stream: logger.stream 
+    morgan(':method :url :status :response-time ms - :res[content-length]', {
+        stream: logger.stream
     })
 );
 
@@ -34,13 +34,13 @@ mongo.connect(mongoUrl, null, function(err, db_) {
     }
 });
 
-app.use(function(req, res, next) {    
+app.use(function(req, res, next) {
     if(!db) {
         //Database not connected
         mongo.connect(mongoUrl, null, function(err, db_) {
             if(err) {
                 logger.error(err);
-                res.sendStatus(500);                
+                res.sendStatus(500);
             } else {
                 db = db_;
                 next();
@@ -48,56 +48,46 @@ app.use(function(req, res, next) {
         });
     } else {
         next();
-    }    
+    }
 });
 
-function randomFail(req, res, next) {
-    var min = 1;
-    var max = 2;
-    var rand = Math.floor(Math.random() * (max - min + 1)) + min;
-    
-    if(rand === 2) {
-        res.sendStatus(500);        
-    } else {
-        next();
-    }
-}
-
 // Actual query
-app.get('/tickets', randomFail, function(req, res) {
+app.get('/tickets', function(req, res) {
     var collection = db.collection('tickets');
     collection.find().toArray(function(err, result) {
         if(err) {
             logger.error(err);
             res.sendStatus(500);
             return;
-        } 
+        }
         res.json(result);
-    });   
+    });
 });
 
 var commentSubscribers = {};
 
 function notifySubscribers(data) {
+    console.log('notify subscribers');
     var collection = db.collection('tickets');
     var oid = new ObjectID(data.ticketId);
     collection.findOne({ '_id': oid }, { title: 1 }, function(err, ticket) {
         if(err) {
+            console.log(`ticket id ${oid} was not found`);
             logger.error(err);
             return;
-        }       
-        
+        }
+        console.log(`ticket found is ${JSON.stringify(ticket)}`);
         data.title = ticket.title;
         var jsonData = JSON.stringify(data);
-        
+
         logger.debug(data);
-        
+
         for(var subscriber in commentSubscribers) {
             if(commentSubscribers.hasOwnProperty(subscriber)) {
-                console.log('EVENT: sending new reply to subscriber: ' + 
+                console.log('EVENT: sending new reply to subscriber: ' +
                     subscriber);
                 dest = url.parse(subscriber);
-            
+
                 var req = http.request({
                     hostname: dest.hostname,
                     port: dest.port,
@@ -106,13 +96,13 @@ function notifySubscribers(data) {
                     headers: {
                         'Content-Type': 'application/json',
                         'Content-Length': jsonData.length
-                    }                    
+                    }
                 });
-                
+
                 req.on('error', function(err) {
                     logger.error(err);
                 });
-                
+
                 req.write(jsonData);
                 req.end();
             }
@@ -124,20 +114,21 @@ function notifySubscribers(data) {
 app.post('/tickets/addComment', function(req, res) {
     var collection = db.collection('tickets');
     var oid = new ObjectID(req.body.ticketId);
-    collection.update({ '_id': oid }, { 
-        $push: { 
-            replies: { 
-                user: req.body.user, 
-                message: req.body.message 
-            } 
-        } 
-    }, function(err) {
+    console.log(`updating ticket colleciton ${oid}`);
+    collection.update({ '_id': oid }, {
+        $push: {
+            replies: {
+                user: req.body.user,
+                message: req.body.message
+            }
+        }
+    },  {upsert : true}, function(err) {
         if(err) {
             logger.error(err);
             res.sendStatus(500);
         } else {
             res.sendStatus(200);
-            
+
             notifySubscribers({
                 ticketId: req.body.ticketId,
                 user: req.body.user,
@@ -161,35 +152,40 @@ app.post('/tickets/unsubscribeToComments', function(req, res) {
 function exitHandler() {
     var unregister = Q.denodeify(registry.unregister);
     var promises = [];
-    
-    promises.push(unregister('Ticket Query', 1, 0, 1));
-    promises.push(unregister('Ticket Add Comment', 1, 0, 1));
-    promises.push(unregister('Ticket Subscribe', 1, 0, 1));
-    promises.push(unregister('Ticket Unsubscribe', 1, 0, 1));
-    
+    console.log('in exit handler');
+    promises.push(unregister('Ticket Query', 1, 0, 0));
+    promises.push(unregister('Ticket Add Comment', 1, 0, 0));
+    promises.push(unregister('Ticket Subscribe', 1, 0, 0));
+    promises.push(unregister('Ticket Unsubscribe', 1, 0, 0));
+
     Q.all(promises).fin(function() {
         process.exit();
-    });   
+    });
+     Q.delay(2000).then(()=>{
+       logger.error('coudnt unregister during 2 sec');
+       process.exit(1);
+     })
 }
 
 process.on('exit', exitHandler);
-process.on('SIGINT', exitHandler);
-process.on('SIGTERM', exitHandler);
-process.on('uncaughtException', exitHandler);
+//process.on('SIGINT', exitHandler);
+//process.on('SIGTERM', exitHandler);
+//process.on('uncaughtException', exitHandler);
 
 // Standalone server setup
-var port = process.env.PORT || 3005;
+var port = process.env.PORT || 3001;
 http.createServer(app).listen(port, function (err) {
     if (err) {
         logger.error(err);
         process.exit();
-    } else {  
+    } else {
         logger.info('Listening on http://localhost:' + port);
 
         function registerCallback(err) {
             if(err) {
                 logger.error(err);
-                process.exit();
+                //process.exit();
+                return err;
             }
         }
 
@@ -197,54 +193,52 @@ http.createServer(app).listen(port, function (err) {
             name: 'Ticket Query',
             versionMajor: 1,
             versionMinor: 0,
-            versionPatch: 1,
+            versionPatch: 0,
             url: '/tickets',
             endpoints: [ {
                 type: 'http-get',
-                url: 'http://127.0.0.1:' + port + '/tickets'
+                url: process.env.EVENT_URL || 'http://127.0.0.1:' + port + '/tickets'
             } ],
             authorizedRoles: ['tickets-query']
         }, registerCallback);
-        
+
         registry.register({
             name: 'Ticket Add Comment',
             versionMajor: 1,
             versionMinor: 0,
-            versionPatch: 1,
+            versionPatch: 0,
             url: '/tickets/addComment',
             endpoints: [ {
                 type: 'http-post',
-                url: 'http://127.0.0.1:' + port + '/tickets/addComment'
+                url: process.env.EVENT_URL || 'http://127.0.0.1:' + port + '/tickets/addComment'
             } ],
             authorizedRoles: ['tickets-update']
         }, registerCallback);
-        
+
         registry.register({
             name: 'Ticket Subscribe',
             versionMajor: 1,
             versionMinor: 0,
-            versionPatch: 1,
+            versionPatch: 0,
             url: '/tickets/subscribeToComments',
             endpoints: [ {
                 type: 'http-post',
-                url: 'http://127.0.0.1:' + port + '/tickets/subscribeToComments'
+                url: process.env.EVENT_URL ||'http://127.0.0.1:' + port + '/tickets/subscribeToComments'
             } ],
             authorizedRoles: ['tickets-query']
         }, registerCallback);
-        
+
         registry.register({
             name: 'Ticket Unsubscribe',
             versionMajor: 1,
             versionMinor: 0,
-            versionPatch: 1,
+            versionPatch: 0,
             url: '/tickets/unsubscribeToComments',
             endpoints: [ {
                 type: 'http-post',
-                url: 'http://127.0.0.1:' + port + '/tickets/unsubscribeToComments'
+                url: process.env.EVENT_URL ||'http://127.0.0.1:' + port + '/tickets/unsubscribeToComments'
             } ],
             authorizedRoles: ['tickets-query']
         }, registerCallback);
     }
 });
-
-

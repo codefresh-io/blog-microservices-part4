@@ -1,5 +1,5 @@
 const request = require('supertest');
-const registry = require('../registry');
+const registry = require('registry');
 
 describe('e2e', ()=>{
   beforeEach((done)=>{

@@ -7,9 +7,16 @@ services:
   mongo:
     image: mongo
     ports:
-       - 27017:27017
+       - 27017
   tickets:
      build: ./tickets
+     depends_on :
+       - mongo
+     ports:
+        - 3001
+     environment:
+        - MONGO_URL=mongodb://mongo:27017
+     command: npm start
   random:
      build: ./random
   registry:

@@ -26,8 +26,12 @@ app.use(
 app.use(bodyParser.json());
 
 var db;
+console.log(`mongo url ${process.env.MONGO_URL}`);
+
 mongo.connect(mongoUrl, null, function(err, db_) {
+
     if(err) {
+        console.log(`error happend ${err}`);
         logger.error(err);
     } else {
         db = db_;

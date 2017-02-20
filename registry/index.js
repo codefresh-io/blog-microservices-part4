@@ -2,9 +2,19 @@ var mongoose = require('mongoose');
 var logger = require('../logger');
 var dispatch = require('../dispatch');
 
-var db = mongoose.createConnection(process.env.MONGO_URL ||
-         'mongodb://mongo:27017/test/services');
+var mongoUrl = process.env.MONGO_URL ||
+    'mongodb://mongo:27017/test/services';
+var db ;
 
+mongo.connect(mongoUrl, null, function(err, db_) {
+
+             if(err) {
+                 console.log(`error happend ${err}`);
+                 logger.error(err);
+             } else {
+                 db = db_;
+             }
+         });
 var Service = db.model('Service', new mongoose.Schema ({
     name: String,
     versionMajor: Number,

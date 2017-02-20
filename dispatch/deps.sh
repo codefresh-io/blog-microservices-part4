@@ -5,6 +5,4 @@ git pull --depth=1 origin microservices_split;
 cd ..;
 npm i ./deps/registry
 npm i ./deps/logger
-npm i ./deps/dispatch
-
 rm -rf deps;

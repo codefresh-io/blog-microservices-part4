@@ -6,7 +6,7 @@ var url = require('url');
 var Q = require('q');
 var mongo = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
-var registry = require('../registry');
+var registry = require('registry');
 var logger = require('../logger');
 
 var serviceName = 'Tickets Service';

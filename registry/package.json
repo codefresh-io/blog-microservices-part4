@@ -1,7 +1,7 @@
 {
   "name": "registry",
   "version": "1.0.0",
-  "description": "Sample inter-dependent microservices",
+  "description": "registry for microservices interaction",
   "main": "index",
   "scripts": {
     "test": "mocha ./test"

@@ -5,7 +5,8 @@
   "main": "tickets.js",
   "scripts": {
     "start": "node ./index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "mkdir registry_micro; cd registry; git init;git remote add -f origin https://github.com/codefresh-io/blog-microservices-part4.git;git pull --depth=1 origin microservices_split; cd ..; npm i ./registry_micro/registry"
   },
   "author": "",
   "license": "UNLICENSED",
@@ -17,6 +18,7 @@
     "mongoose": "^4.2.4",
     "morgan": "^1.6.1",
     "q": "^1.4.1",
+    "registry": "file:///Users/verchol/dev/mainProduct/blogs/blog-microservices-part4/registry/",
     "underscore": "^1.8.3",
     "winston": "^1.1.2"
   }

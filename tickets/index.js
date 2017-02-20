@@ -6,13 +6,13 @@ var url = require('url');
 var Q = require('q');
 var mongo = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
-var registry = require('../registry');
+var registry = require('./registry');
 var logger = require('../logger');
 
 var serviceName = 'Tickets Service';
 
 var mongoUrl = process.env.MONGO_URL ||
-    'mongodb://localhost:27017/test/services';
+    'mongodb://mongo:27017/test/services';
 
 // Express and middlewares
 var app = express();

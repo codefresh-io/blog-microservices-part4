@@ -3,7 +3,7 @@ var logger = require('../logger');
 var dispatch = require('../dispatch');
 
 var db = mongoose.createConnection(process.env.MONGO_URL ||
-         'mongodb://localhost:27017/test/services');
+         'mongodb://mongo:27017/test/services');
 
 var Service = db.model('Service', new mongoose.Schema ({
     name: String,
